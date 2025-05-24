@@ -61,6 +61,8 @@ jobs:
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           cat changelog.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_OUTPUT: ${{ github.output }}
 
       - name: Publish to npm
         run: npm publish --access public
