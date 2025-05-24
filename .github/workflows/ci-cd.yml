@@ -58,8 +58,10 @@ jobs:
           else
             git log --pretty=format:"* %s (%h)" > changelog.txt
           fi
+          # Escape EOF in changelog to avoid delimiter issues
+          ESCAPED_CHANGELOG=$(awk '{gsub(/EOF/,"E_O_F"); print}' changelog.txt)
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          cat changelog.txt >> $GITHUB_OUTPUT
+          echo "$ESCAPED_CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
         env:
           GITHUB_OUTPUT: ${{ github.output }}
