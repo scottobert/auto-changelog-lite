@@ -50,8 +50,14 @@ jobs:
 
       - name: Generate changelog for release notes
         id: changelog
+        shell: bash
         run: |
-          git log --pretty=format:"* %s (%h)" v${{ steps.get_version.outputs.version }}^..HEAD > changelog.txt
+          if git tag --list | grep -q '^v'; then
+            LATEST_TAG=$(git describe --tags --abbrev=0)
+            git log --pretty=format:"* %s (%h)" $LATEST_TAG..HEAD > changelog.txt
+          else
+            git log --pretty=format:"* %s (%h)" > changelog.txt
+          fi
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           cat changelog.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
