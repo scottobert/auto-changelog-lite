@@ -42,49 +42,15 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Get version
-        id: get_version
-        shell: bash
-        run: |
-          echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
+      - name: Install semantic-release and plugins
+        run: npm install --no-save semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github @semantic-release/npm @semantic-release/commit-analyzer @semantic-release/release-notes-generator
 
-      - name: Generate changelog for release notes
-        id: changelog
-        shell: bash
-        run: |
-          if git tag --list | grep -q '^v'; then
-            LATEST_TAG=$(git describe --tags --abbrev=0)
-            git log --pretty=format:"* %s (%h)" $LATEST_TAG..HEAD > changelog.txt
-          else
-            git log --pretty=format:"* %s (%h)" > changelog.txt
-          fi
-          # Escape EOF in changelog to avoid delimiter issues
-          ESCAPED_CHANGELOG=$(awk '{gsub(/EOF/,"E_O_F"); print}' changelog.txt)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$ESCAPED_CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Release
+        if: ${{ github.event_name == 'push' }}
+        run: npx semantic-release
         env:
-          GITHUB_OUTPUT: ${{ github.output }}
-
-      - name: Publish to npm
-        run: npm publish --access public
-        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Tag repo with version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag v$VERSION
-          git push origin v$VERSION
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Release v${{ steps.get_version.outputs.version }}
-          body: |
-            ${{ steps.changelog.outputs.changelog }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_COMMITTER_NAME: scottobert
+          GIT_COMMITTER_EMAIL: 13769142+scottobert@users.noreply.github.com
