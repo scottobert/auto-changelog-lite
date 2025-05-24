@@ -1,0 +1,39 @@
+{
+  "name": "@scottobert/auto-changelog-lite",
+  "version": "1.0.0",
+  "description": "A lightweight package to generate concise changelogs from git commit history, with optional AI summarization.",
+  "main": "dist/index.js",
+  "bin": {
+    "auto-changelog-lite": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/auto-changelog-lite.git"
+  },
+  "keywords": [
+    "changelog",
+    "git",
+    "summarization",
+    "npm"
+  ],
+  "author": "Scott Obert",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "simple-git": "^3.27.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.5",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.17.50",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.4",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.8.3"
+  }
+}
