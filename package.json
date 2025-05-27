@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/scottobert/auto-changelog-lite.git"
+    "url": "git+https://github.com/scottobert/auto-changelog-lite.git"
   },
   "keywords": [
     "changelog",
@@ -42,5 +42,17 @@
     "ts-jest": "^29.3.4",
     "ts-node": "^10.0.0",
     "typescript": "^5.8.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=14.0.0 <=24.0.0"
+  },
+  "release": {
+    "branches": [
+      "main",
+      "next"
+    ]
   }
 }
