@@ -1,3 +1,22 @@
+<img alt="Version" src="https://img.shields.io/badge/version-1.0.0-blue.svg?cacheSeconds=2592000" />
+<a href="https://github.com/scottobert/auto-changelog-lite#readme" target="_blank">
+    <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
+</a>
+<a href="https://github.com/scottobert/auto-changelog-lite/graphs/commit-activity" target="_blank">
+    <img alt="Maintenance" src="https://img.shields.io/badge/Maintained%3F-yes-green.svg" />
+</a>
+<a href="https://github.com/scottobert/auto-changelog-lite/blob/master/LICENSE" target="_blank">
+    <img alt="License: GPL--2.0" src="https://img.shields.io/github/license/scottobert/@scottobert/auto-changelog-lite" />
+</a>
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=scottobert_auto-changelog-lite&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=scottobert_auto-changelog-lite)
+
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=scottobert_auto-changelog-lite&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=scottobert_auto-changelog-lite)
+
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=scottobert_auto-changelog-lite&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=scottobert_auto-changelog-lite)
+
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=scottobert_auto-changelog-lite&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=scottobert_auto-changelog-lite)
+
 # auto-changelog-lite
 
 A lightweight npm package that generates concise changelogs from git commit history, with optional AI summarization.
