@@ -1,16 +1,28 @@
 import { request } from 'https';
 
 export class Summarizer {
-    async summarize(changelog: string): Promise<string> {
-        const apiKey = process.env.OPENAI_API_KEY;
-        if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+    private apiKey: string;
+    private customPrompt: string;
 
+    constructor(apiKey?: string, customPrompt?: string) {
+        const envApiKey = process.env.OPENAI_API_KEY;
+        if (envApiKey) {
+            this.apiKey = envApiKey;
+        } else if (apiKey) {
+            this.apiKey = apiKey;
+        } else {
+            throw new Error('OpenAI API key is not set. Please set the OPENAI_API_KEY environment variable or provide it in the configuration file.');
+        }
+        this.customPrompt = customPrompt || 'You are a helpful assistant that summarizes changelogs concisely.';
+    }
+
+    async summarize(changelog: string): Promise<string> {
         const data = JSON.stringify({
             model: 'gpt-3.5-turbo',
             messages: [
                 {
                     role: 'system',
-                    content: 'You are a helpful assistant that summarizes changelogs concisely.',
+                    content: this.customPrompt,
                 },
                 {
                     role: 'user',
@@ -26,7 +38,7 @@ export class Summarizer {
             path: '/v1/chat/completions',
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
+                'Authorization': `Bearer ${this.apiKey}`,
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(data),
             },
