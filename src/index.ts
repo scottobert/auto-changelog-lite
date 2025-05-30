@@ -1,8 +1,20 @@
 import { execSync } from 'child_process';
-import { Summarizer } from './ai/summarizer';
-import { Config, ConventionalCommitsConfig } from './config'; // Updated import
-import { simpleGit, SimpleGitOptions, DefaultLogFields, LogResult } from 'simple-git'; // Added simple-git
-import { sync as conventionalCommitsParserSync, Commit } from 'conventional-commits-parser'; // Added parser
+import { Summarizer } from './ai/summarizer.js';
+import { Config } from './config.js';
+import { simpleGit, SimpleGitOptions, LogResult } from 'simple-git';
+import { sync as conventionalCommitsParserSync, Commit } from 'conventional-commits-parser';
+
+// Define a specific type for the commit fields we expect from simple-git
+interface CustomLogFields {
+    hash: string;
+    date: string;
+    message: string; // Subject
+    body: string;    // Body without subject
+    rawBody: string; // Full raw commit message (subject + body)
+    author_name: string;
+    author_email: string;
+    refs: string;
+}
 
 // Default conventional commit type titles
 const defaultTypeTitles: Record<string, string> = {
@@ -24,7 +36,7 @@ const defaultTypeTitles: Record<string, string> = {
 export async function generateChangelog(config: Config = {}): Promise<string> {
     const useAI = !!config.summarize;
     // Ensure conventionalCommits config exists and has a default for enabled
-    const conventionalConfig = config.conventionalCommits || { enabled: false };
+    const conventionalConfig = config.conventionalCommits || { enabled: false, types: [] };
 
     let changelogContent: string;
 
@@ -39,77 +51,107 @@ export async function generateChangelog(config: Config = {}): Promise<string> {
         // Using simple-git to get structured log data
         // We need body (%B) and hash (%H) for conventional commit parsing and output.
         // The format object maps placeholders to keys in the resulting commit objects.
-        const log: LogResult<DefaultLogFields | { body: string, hash: string, rawBody: string }> = await git.log({
-            format: {
-                hash: '%H',
-                date: '%ai', // author date, ISO 8601 format
-                message: '%s', // subject
-                body: '%b', // body
-                rawBody: '%B' // raw body (subject + body)
-            }
-        });
-        
-        const parsedCommits = log.all.map(commitInfo => {
+        // All fields defined in CustomLogFields must be included here.
+        const logFormat: { [key in keyof CustomLogFields]: string } = {
+            hash: '%H',
+            date: '%ai',
+            message: '%s', // Subject
+            body: '%b',    // Body alone
+            rawBody: '%B', // Full raw message
+            author_name: '%an',
+            author_email: '%ae',
+            refs: '%D'
+        };
+
+        const log: LogResult<CustomLogFields> = await git.log(logFormat);
+
+        // Define a structure for what we store after parsing or fallback
+        interface HandledCommit {
+            details: Commit; // The object from conventionalCommitsParserSync or our fallback
+            hash: string;
+            nonConventional: boolean;
+        }
+
+        const handledCommits: HandledCommit[] = log.all.map((commitInfo: CustomLogFields) => {
+            const shortHash = commitInfo.hash.substring(0, 7);
             try {
-                // Parse the raw body which includes subject and body
-                const parsed = conventionalCommitsParserSync(commitInfo.rawBody);
-                return { ...parsed, hash: commitInfo.hash.substring(0, 7) }; // Use short hash
-            } catch (e) {
-                // Handle commits that don't follow the spec
-                return { 
-                    type: 'chore', // Default to 'chore' or a special type like 'other'
-                    scope: null, 
-                    subject: commitInfo.message, // Use the subject from git log
-                    header: commitInfo.message, 
-                    body: commitInfo.body, 
-                    footer: null, 
-                    notes: [], 
-                    references: [], 
-                    mentions: [], 
-                    revert: null, 
-                    hash: commitInfo.hash.substring(0, 7),
-                    nonConventional: true 
+                const parsed: Commit = conventionalCommitsParserSync(commitInfo.rawBody);
+                // Ensure 'mentions' is always an array. Parser might return it as undefined.
+                // Also ensure notes and references are arrays if the parser might omit them.
+                // const parsed: Commit = conventionalCommitsParserSync(commitInfo.rawBody); // Duplicate removed
+                return {
+                    details: {
+                        ...parsed, // 'parsed' is already declared above in this scope
+                        // Explicitly cast potentially problematic array fields to 'any'
+                        // to bypass index signature conflicts if 'any' is being narrowed to 'string'.
+                        mentions: (parsed.mentions || []) as any,
+                        notes: (parsed.notes || []) as any,
+                        references: (parsed.references || []) as any,
+                    } as Commit, // Assert that the resulting object is a Commit
+                    hash: shortHash,
+                    nonConventional: false
                 };
+            } catch (e) {
+                // Fallback for non-conventional commits
+                const fallbackCommit = { // Let TypeScript infer this object's type initially
+                    type: 'chore',
+                    scope: null,
+                    subject: commitInfo.message,
+                    header: commitInfo.message,
+                    body: commitInfo.body,
+                    footer: null,
+                    notes: [] as any, // Cast to any
+                    references: [] as any, // Cast to any
+                    mentions: [] as any, // Cast to any
+                    revert: null,
+                    merge: null,
+                };
+                // Then assert it as Commit for the 'details' field.
+                return { details: fallbackCommit as Commit, hash: shortHash, nonConventional: true };
             }
         });
 
-        const groupedCommits: Record<string, (Commit & { hash: string; nonConventional?: boolean })[]> = {};
-        parsedCommits.forEach(commit => {
-            const typeKey = (commit.type ? commit.type.toLowerCase() : (commit.nonConventional ? 'other' : 'chore'));
+        const groupedCommits: Record<string, HandledCommit[]> = {};
+        handledCommits.forEach(handledEntry => {
+            const commitDetails = handledEntry.details;
+            const typeKey = (commitDetails.type ? commitDetails.type.toLowerCase() : (handledEntry.nonConventional ? 'other' : 'chore'));
             if (!groupedCommits[typeKey]) {
                 groupedCommits[typeKey] = [];
             }
-            groupedCommits[typeKey].push(commit);
+            groupedCommits[typeKey].push(handledEntry);
         });
 
         let outputLines: string[] = [];
-        const includeTypes = conventionalConfig.types && conventionalConfig.types.length > 0 
-                             ? conventionalConfig.types.map(t => t.toLowerCase()) 
-                             : Object.keys(defaultTypeTitles); // Default to all known types if not specified
+        const includeTypes = conventionalConfig.types && conventionalConfig.types.length > 0
+                             ? conventionalConfig.types.map(t => t.toLowerCase())
+                             : Object.keys(defaultTypeTitles);
 
         for (const type of Object.keys(defaultTypeTitles)) {
             if (includeTypes.includes(type) && groupedCommits[type] && groupedCommits[type].length > 0) {
                 outputLines.push(`## ${defaultTypeTitles[type]}\n`);
-                groupedCommits[type].forEach(commit => {
+                groupedCommits[type].forEach(handledEntry => {
+                    const commitDetails = handledEntry.details;
                     let commitLine = `- `;
-                    if (commit.scope) {
-                        commitLine += `**${commit.scope}:** `;
+                    if (commitDetails.scope) {
+                        commitLine += `**${commitDetails.scope}:** `;
                     }
-                    // Use commit.subject if available (it's usually the first line of the message)
-                    // For non-conventional commits, subject might be the best representation.
-                    const displaySubject = commit.subject || (commit.header ? commit.header.substring(commit.header.indexOf(':') + 1).trim() : '');
-                    commitLine += `${displaySubject} (${commit.hash})`;
+                    const displaySubject = commitDetails.subject || (commitDetails.header ? commitDetails.header.substring(commitDetails.header.indexOf(':') + 1).trim() : 'No subject');
+                    commitLine += `${displaySubject} (${handledEntry.hash})`;
                     outputLines.push(commitLine);
                 });
-                outputLines.push(''); // Add a blank line after the section
+                outputLines.push('');
             }
         }
-        // Handle 'other' commits specifically if they were not part of defaultTypeTitles initially
+
         if (includeTypes.includes('other') && groupedCommits['other'] && groupedCommits['other'].length > 0) {
-            if (!defaultTypeTitles['other']) outputLines.push(`## Other Changes\n`);
-            else outputLines.push(`## ${defaultTypeTitles['other']}\n`);
-            groupedCommits['other'].forEach(commit => {
-                 let commitLine = `- ${commit.subject || commit.header} (${commit.hash})`; // Simpler format for 'other'
+            const otherTitle = defaultTypeTitles['other'] || 'Other Changes';
+            if (!outputLines.some(line => line.startsWith(`## ${otherTitle}`))) { // Avoid duplicate "Other Changes" section
+                 outputLines.push(`## ${otherTitle}\n`);
+            }
+            groupedCommits['other'].forEach(handledEntry => {
+                 const commitDetails = handledEntry.details;
+                 const displaySubject = commitDetails.subject || (commitDetails.header ? commitDetails.header.substring(commitDetails.header.indexOf(':') + 1).trim() : 'No subject');
+                 let commitLine = `- ${displaySubject} (${handledEntry.hash})`;
                 outputLines.push(commitLine);
             });
             outputLines.push('');

@@ -1,16 +1,17 @@
-import { Config } from './config';
+import * as fs from 'fs'; // Added import for fs
+import { Config } from './config.js'; // Added .js extension
 // Import 'generateChangelog' to spy on it.
 // The actual implementation will be mocked.
-import { generateChangelog } from './index';
+import { generateChangelog } from './index.js'; // Added .js extension
 
 // Mock './index' to control generateChangelog behavior and spy on it
-jest.mock('./index', () => ({
+jest.mock('./index.js', () => ({ // Added .js extension
     generateChangelog: jest.fn().mockResolvedValue('Mocked Changelog Output'),
 }));
 
 // Mock 'fs' for config file reading
 jest.mock('fs');
-const mockFs = jest.requireMock('fs') as jest.Mocked<typeof fs>; // Use jest.requireMock for clarity with jest.mock above
+const mockFs = jest.requireMock('fs') as jest.Mocked<typeof fs>;
 
 describe('CLI Execution and Configuration Logic', () => {
     let consoleLogSpy: jest.SpyInstance;
@@ -43,7 +44,7 @@ describe('CLI Execution and Configuration Logic', () => {
             // Dynamically require cli.ts to execute it
             // Its main() function will be called automatically as per its structure
             try {
-                await import('./cli');
+                await import('./cli.js'); // Added .js extension
             } catch (e) {
                 // Catch errors that might occur during cli execution (e.g. if generateChangelog rejects)
                 // These are tested by checking console.error and process.exit spies
@@ -54,11 +55,11 @@ describe('CLI Execution and Configuration Logic', () => {
     beforeEach(() => {
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-        processExitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as (code?: number) => never);
+        processExitSpy = jest.spyOn(process, 'exit').mockImplementation((_code?: string | number | null | undefined) => undefined as never);
 
         originalArgv = [...process.argv];
         originalEnv = { ...process.env };
-        
+
         (generateChangelog as jest.Mock).mockClear();
         mockFs.existsSync.mockReset();
         mockFs.readFileSync.mockReset();
@@ -82,7 +83,7 @@ describe('CLI Execution and Configuration Logic', () => {
         await runCli([], {},{ openAiApiKey: 'config_api_key' });
         expect(generateChangelog).toHaveBeenCalledWith(expect.objectContaining({ openAiApiKey: 'config_api_key' }));
     });
-    
+
     it('should load customPrompt from config file', async () => {
         await runCli([], {},{ customPrompt: 'Test Prompt' });
         expect(generateChangelog).toHaveBeenCalledWith(expect.objectContaining({ customPrompt: 'Test Prompt' }));
@@ -106,12 +107,12 @@ describe('CLI Execution and Configuration Logic', () => {
         await runCli(['--summarize'], {}, { summarize: false });
         expect(generateChangelog).toHaveBeenCalledWith(expect.objectContaining({ summarize: true }));
     });
-    
+
     it('-s CLI arg should override config file (summarize:false)', async () => {
         await runCli(['-s'], {}, { summarize: false });
         expect(generateChangelog).toHaveBeenCalledWith(expect.objectContaining({ summarize: true }));
     });
-    
+
     it('OPENAI_API_KEY env var should be used by Summarizer, cli.ts passes config key if present', async () => {
         // cli.ts itself doesn't prioritize env var over config for the `config.openAiApiKey` it builds.
         // It reads from config, then CLI arg can override it.
@@ -120,7 +121,7 @@ describe('CLI Execution and Configuration Logic', () => {
         await runCli([], { OPENAI_API_KEY: 'env_api_key' }, { openAiApiKey: 'config_api_key' });
         expect(generateChangelog).toHaveBeenCalledWith(expect.objectContaining({ openAiApiKey: 'config_api_key' }));
     });
-        
+
     it('--openai-api-key CLI arg should override config file openAiApiKey', async () => {
         await runCli(['--openai-api-key=cli_api_key'], {}, { openAiApiKey: 'config_api_key' });
         expect(generateChangelog).toHaveBeenCalledWith(expect.objectContaining({ openAiApiKey: 'cli_api_key' }));
@@ -143,7 +144,7 @@ describe('CLI Execution and Configuration Logic', () => {
             }
         });
     });
-    
+
     it('should use default for conventionalCommits if field is absent in config', async () => {
         await runCli([], {}, { summarize: true }); // conventionalCommits field missing
         expect(generateChangelog).toHaveBeenCalledWith(expect.objectContaining({
@@ -163,7 +164,7 @@ describe('CLI Execution and Configuration Logic', () => {
             expect.any(Error)
         );
     });
-    
+
     it('should call generateChangelog and log its result upon successful execution', async () => {
         (generateChangelog as jest.Mock).mockResolvedValueOnce('Successful Changelog');
         await runCli([], {}, { summarize: true });
