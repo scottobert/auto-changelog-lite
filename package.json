@@ -28,7 +28,11 @@
     "simple-git": "^3.27.0"
   },
   "devDependencies": {
-    "@jedmao/semantic-release-npm-github-config": "^1.0.9",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/github": "^11.0.3",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.3",
     "@tsconfig/node22": "^22.0.2",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.21",
@@ -48,6 +52,13 @@
     "branches": [
       "main",
       "next"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      "@semantic-release/npm",
+      "@semantic-release/github"
     ]
   }
 }
