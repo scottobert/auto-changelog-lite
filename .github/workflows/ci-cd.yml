@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   codeql:
@@ -25,8 +26,12 @@ jobs:
 
   release:
     needs: [codeql, test, sonar]
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
     uses: scottobert/deployment-pipeline/.github/workflows/semantic-release.yml@main
     secrets:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
